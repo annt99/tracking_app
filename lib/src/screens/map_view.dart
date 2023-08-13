@@ -64,7 +64,7 @@ class GoogleMapsWebViewScreen extends StatelessWidget {
           ),
           ClipPath(
             clipper: TopBorderRadiusClipper(),
-            child: Container(
+            child: SizedBox(
               width: MediaQuery.sizeOf(context).width,
               height: MediaQuery.sizeOf(context).height,
               child: WebViewWidget(

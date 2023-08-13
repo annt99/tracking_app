@@ -5,7 +5,7 @@ import 'package:maps_launcher/maps_launcher.dart';
 class Utils {
   static String getDate(int timeStamp) {
     final dateTime = DateTime.fromMillisecondsSinceEpoch(timeStamp);
-    final f = DateFormat('yyyy-MM-dd hh:mm');
+    final f = DateFormat('yyyy-MM-dd HH:mm');
     return f.format(dateTime);
   }
 

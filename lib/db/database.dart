@@ -23,7 +23,7 @@ class DatabaseProvider {
 
     var database = await openDatabase(
       path,
-      version: 1,
+      version: 3,
       readOnly: false,
       onCreate: initDb,
       onUpgrade: onUpgrade,
@@ -35,13 +35,16 @@ class DatabaseProvider {
   void initDb(Database database, int version) async {
     //user main table
     String sqlTracking =
-        'CREATE TABLE IF NOT EXISTS $tableTracking (${trackingTableColumns[0]} INTEGER PRIMARY KEY,${trackingTableColumns[1]} REAL NOT NULL,${trackingTableColumns[2]} REAL NOT NULL, ${trackingTableColumns[3]} TEXT NOT NULL)';
+        'CREATE TABLE IF NOT EXISTS $tableTracking (${trackingTableColumns[0]} INTEGER PRIMARY KEY,${trackingTableColumns[1]} REAL NOT NULL,${trackingTableColumns[2]} REAL NOT NULL, ${trackingTableColumns[3]} TEXT NOT NULL, ${trackingTableColumns[4]} TEXT NOT NULL)';
     await database.execute(sqlTracking);
   }
 
   void onUpgrade(Database database, int oldVersion, int newVersion) async {
     if (newVersion > oldVersion) {
-      //await database.execute("request");
+      await database.execute('DROP TABLE IF EXISTS $tableTracking');
+      String sqlTracking =
+          'CREATE TABLE IF NOT EXISTS $tableTracking (${trackingTableColumns[0]} INTEGER PRIMARY KEY,${trackingTableColumns[1]} REAL NOT NULL,${trackingTableColumns[2]} REAL NOT NULL, ${trackingTableColumns[3]} TEXT NOT NULL, ${trackingTableColumns[4]} TEXT NOT NULL)';
+      await database.execute(sqlTracking);
     }
   }
 }

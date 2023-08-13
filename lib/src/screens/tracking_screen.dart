@@ -1,11 +1,12 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:grouped_list/grouped_list.dart';
 import 'package:tracking_app/db/tracking_dao.dart';
 import 'package:tracking_app/model/tracking_location_model.dart';
 import 'package:tracking_app/src/screens/map_view.dart';
+import 'package:tracking_app/src/screens/tracking_service.dart';
 import 'package:tracking_app/src/utils/utils.dart';
-import 'package:background_location/background_location.dart' as BgLocation;
 
 class TrackingScreen extends StatefulWidget {
   const TrackingScreen({super.key});
@@ -16,74 +17,26 @@ class TrackingScreen extends StatefulWidget {
 
 class _TrackingScreenState extends State<TrackingScreen> {
   bool isTracking = false;
-  Set<TrackingLocation> locations = {};
   TrackingDao trackingDao = TrackingDao();
+  Set<TrackingLocation> locations = {};
 
   @override
   void initState() {
     super.initState();
-    getAllLocation();
-  }
-
-  Future<void> getAllLocation() async {
-    final _locations = await trackingDao.getAllTrackingLocations();
+    TrackingService.instance.getAllLocation(() {
+      setState(() {
+        locations = TrackingService.instance.locations;
+      });
+    });
     setState(() {
-      locations.addAll(_locations);
+      isTracking = TrackingService.instance.isTracking;
     });
-  }
-
-  startTracking() async {
-    await BgLocation.BackgroundLocation.setAndroidNotification(
-      title: 'Background service is running',
-      message: 'Background location in progress',
-      icon: '@mipmap/ic_launcher',
-    );
-    await BgLocation.BackgroundLocation.startLocationService();
-    BgLocation.BackgroundLocation.getLocationUpdates((location) async {
-      print('test location');
-      addLocation(location.latitude ?? 0, location.longitude ?? 0);
-    });
-  }
-
-  stopTracking() async {
-    await BgLocation.BackgroundLocation.stopLocationService();
-  }
-
-  Future<void> addLocation(double lat, double lng) async {
-    double minDistanceThreshold = 100.0;
-
-    if (locations.isNotEmpty) {
-      if (lat != locations.last.lat && lng != locations.last.lng) {
-        double distance = Geolocator.distanceBetween(
-            locations.last.lat, locations.last.lng, lat, lng);
-        print('test distance : $distance');
-
-        if (distance > minDistanceThreshold) {
-          final String address = await Utils.getAddressFromPosition(lat, lng);
-          final time = DateTime.now().millisecondsSinceEpoch;
-          final trackingLocation =
-              TrackingLocation(id: time, lat: lat, lng: lng, address: address);
-          if (!locations.contains(trackingLocation)) {
-            locations.add(trackingLocation);
-            await trackingDao.saveLocation(trackingLocation);
-          }
-        }
-      }
-    } else {
-      print('test distance 1');
-      final String address = await Utils.getAddressFromPosition(lat, lng);
-      final time = DateTime.now().millisecondsSinceEpoch;
-      final trackingLocation =
-          TrackingLocation(id: time, lat: lat, lng: lng, address: address);
-      locations.add(trackingLocation);
-      await trackingDao.saveLocation(trackingLocation);
-    }
-    setState(() {});
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      key: widget.key,
       appBar: AppBar(
         title: const Text(
           'Location History',
@@ -142,9 +95,14 @@ class _TrackingScreenState extends State<TrackingScreen> {
                                 isTracking = value;
                               });
                               if (isTracking) {
-                                startTracking();
+                                TrackingService.instance.start(() {
+                                  setState(() {
+                                    locations =
+                                        TrackingService.instance.locations;
+                                  });
+                                });
                               } else {
-                                stopTracking();
+                                TrackingService.instance.stop();
                               }
                             },
                           )),
@@ -153,164 +111,140 @@ class _TrackingScreenState extends State<TrackingScreen> {
                     Expanded(
                         child: locations.isEmpty
                             ? const Center(child: Text('No location'))
-                            : ListView.builder(
-                                itemCount: locations.length,
-                                itemBuilder: (context, index) {
-                                  final item = locations.elementAt(index);
-                                  final previousDate = index > 0
-                                      ? Utils.getDate(
-                                          locations.elementAt(index).id)
-                                      : null;
-                                  final currentDate = Utils.getDate(item.id);
-                                  final showDateHeader =
-                                      currentDate != previousDate;
-                                  return GestureDetector(
-                                    onTap: () => Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (context) =>
-                                            GoogleMapsWebViewScreen(
-                                          latitude: item.lat,
-                                          longitude: item.lng,
-                                          label: item.address,
-                                        ),
+                            : GroupedListView(
+                                elements: locations.toList().reversed.toList(),
+                                groupBy: (element) =>
+                                    element.group.split(" ").first,
+                                groupSeparatorBuilder: (String groupByValue) =>
+                                    Container(
+                                      margin: const EdgeInsets.only(
+                                          bottom: 10, top: 10),
+                                      child: Text(
+                                        groupByValue,
+                                        style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 15),
                                       ),
                                     ),
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        if (showDateHeader)
-                                          Container(
-                                            margin: const EdgeInsets.only(
-                                                bottom: 10, top: 10),
-                                            child: Text(
-                                              currentDate.split(' ').first,
-                                              style: const TextStyle(
-                                                  fontWeight: FontWeight.bold,
-                                                  fontSize: 15),
-                                            ),
+                                itemBuilder: (context,
+                                        TrackingLocation element) =>
+                                    GestureDetector(
+                                      onTap: () => Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                              builder: (context) =>
+                                                  GoogleMapsWebViewScreen(
+                                                    latitude: element.lat,
+                                                    longitude: element.lng,
+                                                    label: element.address,
+                                                  ))),
+                                      child: Container(
+                                        margin:
+                                            const EdgeInsets.only(bottom: 10),
+                                        decoration: BoxDecoration(
+                                          color: Colors.white,
+                                          borderRadius:
+                                              BorderRadius.circular(10.0),
+                                        ),
+                                        child: ListTile(
+                                          title: Text(
+                                            element.address,
+                                            overflow: TextOverflow.ellipsis,
+                                            style:
+                                                const TextStyle(fontSize: 14),
                                           ),
-                                        Container(
-                                          margin:
-                                              const EdgeInsets.only(bottom: 10),
-                                          decoration: BoxDecoration(
-                                            color: Colors.white,
-                                            borderRadius:
-                                                BorderRadius.circular(10.0),
-                                          ),
-                                          child: ListTile(
-                                            title: Text(
-                                              locations
-                                                  .elementAt(index)
-                                                  .address,
-                                              overflow: TextOverflow.ellipsis,
-                                              style:
-                                                  const TextStyle(fontSize: 14),
-                                            ),
-                                            trailing: Row(
-                                              mainAxisSize: MainAxisSize.min,
-                                              children: [
-                                                Text(
-                                                  currentDate.split(' ').last,
-                                                  style: const TextStyle(
-                                                      fontSize: 14),
-                                                ),
-                                                PopupMenuButton<String>(
-                                                  icon: const Icon(
-                                                      Icons.more_vert),
-                                                  offset: const Offset(20, 50),
-                                                  shape: RoundedRectangleBorder(
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                              12)),
-                                                  onSelected: (value) {
-                                                    // Handle menu item selection
-                                                    if (value == 'save') {
-                                                      // Handle Option 1
-                                                    } else if (value ==
-                                                        'share') {
-                                                      // Handle Option 2
-                                                    } else if (value ==
-                                                        'delete') {
-                                                      setState(() {
-                                                        trackingDao
-                                                            .deleteLocation(
-                                                                locations
-                                                                    .elementAt(
-                                                                        index)
-                                                                    .id);
-                                                        locations.remove(
-                                                            locations.elementAt(
-                                                                index));
-                                                      });
-                                                    }
-                                                  },
-                                                  itemBuilder:
-                                                      (BuildContext context) {
-                                                    return [
-                                                      PopupMenuItem<String>(
-                                                        value: 'save',
+                                          trailing: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Text(
+                                                element.group.split(' ').last,
+                                                style: const TextStyle(
+                                                    fontSize: 14),
+                                              ),
+                                              PopupMenuButton<String>(
+                                                icon:
+                                                    const Icon(Icons.more_vert),
+                                                offset: const Offset(20, 50),
+                                                shape: RoundedRectangleBorder(
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                            12)),
+                                                onSelected: (value) {
+                                                  // Handle menu item selection
+                                                  if (value == 'save') {
+                                                    // Handle Option 1
+                                                  } else if (value == 'share') {
+                                                    // Handle Option 2
+                                                  } else if (value ==
+                                                      'delete') {
+                                                    setState(() {
+                                                      trackingDao
+                                                          .deleteLocation(
+                                                              element.id);
+                                                      locations.remove(element);
+                                                    });
+                                                  }
+                                                },
+                                                itemBuilder:
+                                                    (BuildContext context) {
+                                                  return [
+                                                    PopupMenuItem<String>(
+                                                      value: 'save',
+                                                      child: SizedBox(
+                                                        width: 100,
+                                                        child: Row(
+                                                          children: [
+                                                            Image.asset(
+                                                                'assets/images/save.png'),
+                                                            const SizedBox(
+                                                                width: 15),
+                                                            const Text('Save'),
+                                                          ],
+                                                        ),
+                                                      ),
+                                                    ),
+                                                    PopupMenuItem<String>(
+                                                        value: 'share',
                                                         child: SizedBox(
                                                           width: 100,
                                                           child: Row(
                                                             children: [
                                                               Image.asset(
-                                                                  'assets/images/save.png'),
+                                                                  'assets/images/share.png'),
                                                               const SizedBox(
                                                                   width: 15),
                                                               const Text(
-                                                                  'Save'),
+                                                                  'Share'),
                                                             ],
                                                           ),
-                                                        ),
-                                                      ),
-                                                      PopupMenuItem<String>(
-                                                          value: 'share',
-                                                          child: SizedBox(
-                                                            width: 100,
-                                                            child: Row(
-                                                              children: [
-                                                                Image.asset(
-                                                                    'assets/images/share.png'),
-                                                                const SizedBox(
-                                                                    width: 15),
-                                                                const Text(
-                                                                    'Share'),
-                                                              ],
-                                                            ),
-                                                          )),
-                                                      PopupMenuItem<String>(
-                                                          value: 'delete',
-                                                          child: SizedBox(
-                                                            width: 100,
-                                                            child: Row(
-                                                              children: [
-                                                                Image.asset(
-                                                                    'assets/images/delete.png'),
-                                                                const SizedBox(
-                                                                    width: 15),
-                                                                const Text(
-                                                                  'Delete',
-                                                                  style: TextStyle(
-                                                                      color: Colors
-                                                                          .red),
-                                                                ),
-                                                              ],
-                                                            ),
-                                                          )),
-                                                    ];
-                                                  },
-                                                )
-                                              ],
-                                            ),
+                                                        )),
+                                                    PopupMenuItem<String>(
+                                                        value: 'delete',
+                                                        child: SizedBox(
+                                                          width: 100,
+                                                          child: Row(
+                                                            children: [
+                                                              Image.asset(
+                                                                  'assets/images/delete.png'),
+                                                              const SizedBox(
+                                                                  width: 15),
+                                                              const Text(
+                                                                'Delete',
+                                                                style: TextStyle(
+                                                                    color: Colors
+                                                                        .red),
+                                                              ),
+                                                            ],
+                                                          ),
+                                                        )),
+                                                  ];
+                                                },
+                                              )
+                                            ],
                                           ),
                                         ),
-                                      ],
-                                    ),
-                                  );
-                                },
-                              ))
+                                      ),
+                                    )))
                   ],
                 )),
           ),
@@ -324,7 +258,12 @@ class _TrackingScreenState extends State<TrackingScreen> {
             final position = await Geolocator.getCurrentPosition(
               desiredAccuracy: LocationAccuracy.best,
             );
-            addLocation(position.latitude, position.longitude);
+            TrackingService.instance
+                .addLocation(position.latitude, position.longitude, () {
+              setState(() {
+                locations = TrackingService.instance.locations;
+              });
+            });
           } catch (e) {
             print('Error getting location: $e');
           }
