@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:tracking_app/db/tracking_dao.dart';
 import 'package:tracking_app/model/tracking_location_model.dart';
+import 'package:tracking_app/src/screens/map_view.dart';
 import 'package:tracking_app/src/utils/utils.dart';
 import 'package:background_location/background_location.dart' as BgLocation;
 
@@ -164,8 +165,17 @@ class _TrackingScreenState extends State<TrackingScreen> {
                                   final showDateHeader =
                                       currentDate != previousDate;
                                   return GestureDetector(
-                                    onTap: () => Utils.launchGoogleMaps(
-                                        item.lat, item.lng, item.address),
+                                    onTap: () => Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) =>
+                                            GoogleMapsWebViewScreen(
+                                          latitude: item.lat,
+                                          longitude: item.lng,
+                                          label: item.address,
+                                        ),
+                                      ),
+                                    ),
                                     child: Column(
                                       crossAxisAlignment:
                                           CrossAxisAlignment.start,
