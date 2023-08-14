@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:tracking_app/src/screens/tracking_screen.dart';
+import 'package:tracking_app/src/screens/widgets.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 class GoogleMapsWebViewScreen extends StatelessWidget {
