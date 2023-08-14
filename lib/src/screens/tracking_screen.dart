@@ -87,8 +87,6 @@ class _TrackingScreenState extends State<TrackingScreen> {
                                     element.group.split(" ").first,
                                 groupSeparatorBuilder: (String groupByValue) =>
                                     GroupSeparatorItem(value: groupByValue),
-                                itemComparator: (element1, element2) =>
-                                    element2.id.compareTo(element1.id),
                                 itemBuilder: (context,
                                         TrackingLocation element) =>
                                     TrackingLocationItem(
