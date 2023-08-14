@@ -125,7 +125,7 @@ class _TrackingScreenState extends State<TrackingScreen> {
               desiredAccuracy: LocationAccuracy.best,
             );
             TrackingService.instance
-                .addLocation(position.latitude, position.longitude);
+                .maskLocation(position.latitude, position.longitude);
             setState(() {
               isLoading = false;
             });
