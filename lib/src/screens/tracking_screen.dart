@@ -24,11 +24,11 @@ class _TrackingScreenState extends State<TrackingScreen> {
   void initState() {
     super.initState();
     TrackingService.instance.getAllLocation();
-    if (mounted) {
+    TrackingService.instance.getTrackingState().then((_isTracking) {
       setState(() {
-        isTracking = TrackingService.instance.isTracking;
+        isTracking = _isTracking;
       });
-    }
+    });
   }
 
   @override

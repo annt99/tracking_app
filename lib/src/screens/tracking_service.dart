@@ -5,8 +5,8 @@ import 'package:geolocator/geolocator.dart';
 import 'package:tracking_app/db/tracking_dao.dart';
 import 'package:tracking_app/model/tracking_location_model.dart';
 import 'package:background_location/background_location.dart' as BgLocation;
-import 'package:tracking_app/src/screens/tracking_screen.dart';
 import 'package:tracking_app/src/utils/utils.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class TrackingService extends ChangeNotifier {
   static final TrackingService _instance = TrackingService._();
@@ -36,6 +36,7 @@ class TrackingService extends ChangeNotifier {
 
   start() async {
     _isTracking = true;
+    await saveTrackingState(_isTracking);
     await BgLocation.BackgroundLocation.setAndroidNotification(
       title: 'Background service is running',
       message: 'Background location in progress',
@@ -50,6 +51,7 @@ class TrackingService extends ChangeNotifier {
 
   stop() async {
     _isTracking = false;
+    await saveTrackingState(_isTracking);
     await BgLocation.BackgroundLocation.stopLocationService();
   }
 
@@ -107,5 +109,21 @@ class TrackingService extends ChangeNotifier {
       await _trackingDao.saveLocation(trackingLocation);
       _locationsController.add(locations);
     }
+  }
+
+  Future<void> saveTrackingState(bool isTracking) async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    prefs.setBool('isTracking', isTracking);
+  }
+
+  Future<bool> getTrackingState() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    final result = prefs.getBool('isTracking') ?? false;
+    if (result) {
+      start();
+    } else {
+      stop();
+    }
+    return result;
   }
 }
