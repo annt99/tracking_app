@@ -24,11 +24,11 @@ class _TrackingScreenState extends State<TrackingScreen> {
   void initState() {
     super.initState();
     TrackingService.instance.getAllLocation();
-    TrackingService.instance.getTrackingState().then((_isTracking) {
+    if (mounted) {
       setState(() {
-        isTracking = _isTracking;
+        isTracking = TrackingService.instance.isTracking;
       });
-    });
+    }
   }
 
   @override
@@ -87,6 +87,8 @@ class _TrackingScreenState extends State<TrackingScreen> {
                                     element.group.split(" ").first,
                                 groupSeparatorBuilder: (String groupByValue) =>
                                     GroupSeparatorItem(value: groupByValue),
+                                itemComparator: (element1, element2) =>
+                                    element2.id.compareTo(element1.id),
                                 itemBuilder: (context,
                                         TrackingLocation element) =>
                                     TrackingLocationItem(

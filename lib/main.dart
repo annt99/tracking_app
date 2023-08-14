@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:tracking_app/src/screens/test_screen.dart';
+import 'package:tracking_app/src/screens/tracking_service.dart';
 
 import 'src/screens/tracking_screen.dart';
 
@@ -12,6 +13,7 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    TrackingService.instance.getTrackingState();
     return const MaterialApp(
       debugShowCheckedModeBanner: false,
       home: MyWidget(),

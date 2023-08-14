@@ -120,10 +120,12 @@ class TrackingService extends ChangeNotifier {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     final result = prefs.getBool('isTracking') ?? false;
     if (result) {
+      _isTracking = result;
       start();
     } else {
       stop();
     }
+    _isTracking = result;
     return result;
   }
 }
