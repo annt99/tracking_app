@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:tracking_app/src/screens/test_screen.dart';
 
 import 'src/screens/tracking_screen.dart';
 
@@ -13,7 +14,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return const MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: TrackingScreen(),
+      home: MyWidget(),
     );
   }
 }

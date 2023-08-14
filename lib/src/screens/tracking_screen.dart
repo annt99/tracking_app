@@ -16,72 +16,70 @@ class TrackingScreen extends StatefulWidget {
 
 class _TrackingScreenState extends State<TrackingScreen> {
   bool isTracking = false;
+  bool isLoading = false;
   TrackingDao trackingDao = TrackingDao();
   Set<TrackingLocation> locations = {};
 
   @override
   void initState() {
     super.initState();
-    TrackingService.instance.getAllLocation(() {
+    TrackingService.instance.getAllLocation();
+    if (mounted) {
       setState(() {
-        locations = TrackingService.instance.locations;
+        isTracking = TrackingService.instance.isTracking;
       });
-    });
-    setState(() {
-      isTracking = TrackingService.instance.isTracking;
-    });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      key: widget.key,
-      appBar: myAppBar(),
-      extendBodyBehindAppBar: false,
-      body: Stack(
-        children: [
-          const GradientBackground(),
-          ClipPath(
-            clipper: TopBorderRadiusClipper(),
-            child: Container(
-                color: const Color.fromARGB(255, 240, 240, 240),
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  children: [
-                    Container(
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(10.0),
-                      ),
-                      child: ListTile(
-                          title: const Text(
-                            'Turn On/Off Location History',
-                            style: TextStyle(fontSize: 15),
-                          ),
-                          trailing: CupertinoSwitch(
-                            value: isTracking,
-                            onChanged: (value) {
-                              setState(() {
-                                isTracking = value;
-                              });
-                              if (isTracking) {
-                                TrackingService.instance.start(() {
-                                  setState(() {
-                                    locations =
-                                        TrackingService.instance.locations;
-                                  });
+    return Center(
+      child: Scaffold(
+        appBar: myAppBar(),
+        extendBodyBehindAppBar: false,
+        body: Stack(
+          children: [
+            const GradientBackground(),
+            ClipPath(
+              clipper: TopBorderRadiusClipper(),
+              child: Container(
+                  color: const Color.fromARGB(255, 240, 240, 240),
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    children: [
+                      Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(10.0),
+                        ),
+                        child: ListTile(
+                            title: const Text(
+                              'Turn On/Off Location History',
+                              style: TextStyle(fontSize: 15),
+                            ),
+                            trailing: CupertinoSwitch(
+                              value: isTracking,
+                              onChanged: (value) {
+                                setState(() {
+                                  isTracking = value;
                                 });
-                              } else {
-                                TrackingService.instance.stop();
-                              }
-                            },
-                          )),
-                    ),
-                    const SizedBox(height: 20),
-                    Expanded(
-                        child: locations.isEmpty
-                            ? const Center(child: Text('No location'))
-                            : GroupedListView(
+                                if (isTracking) {
+                                  TrackingService.instance.start();
+                                } else {
+                                  TrackingService.instance.stop();
+                                }
+                              },
+                            )),
+                      ),
+                      const SizedBox(height: 20),
+                      Expanded(
+                          child: StreamBuilder<Set<TrackingLocation>>(
+                        stream: TrackingService.instance.locationStream,
+                        initialData: TrackingService.instance.locations,
+                        builder: (context, snapshot) {
+                          if (snapshot.hasData && snapshot.data!.isNotEmpty) {
+                            locations = snapshot.data!;
+                            return GroupedListView(
                                 elements: locations.toList().reversed.toList(),
                                 groupComparator: (value1, value2) =>
                                     value2.compareTo(value1),
@@ -93,33 +91,49 @@ class _TrackingScreenState extends State<TrackingScreen> {
                                         TrackingLocation element) =>
                                     TrackingLocationItem(
                                         element: element,
-                                        deleteFunction: () => setState(() {
+                                        deleteFunction: () {
+                                          if (mounted) {
+                                            setState(() {
                                               trackingDao
                                                   .deleteLocation(element.id);
                                               locations.remove(element);
-                                            }))))
-                  ],
-                )),
-          ),
-        ],
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-      floatingActionButton: MaskLocationButton(function: () async {
-        try {
-          await Geolocator.requestPermission();
-          final position = await Geolocator.getCurrentPosition(
-            desiredAccuracy: LocationAccuracy.best,
-          );
-          TrackingService.instance
-              .addLocation(position.latitude, position.longitude, () {
+                                            });
+                                          }
+                                        }));
+                          } else {
+                            return const Center(child: Text('No location'));
+                          }
+                        },
+                      ))
+                    ],
+                  )),
+            ),
+            if (isLoading)
+              const Center(
+                child: CircularProgressIndicator(color: Color(0xff40A9F8)),
+              )
+          ],
+        ),
+        floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+        floatingActionButton: MaskLocationButton(function: () async {
+          try {
             setState(() {
-              locations = TrackingService.instance.locations;
+              isLoading = true;
             });
-          });
-        } catch (e) {
-          print('Error getting location: $e');
-        }
-      }),
+            await Geolocator.requestPermission();
+            final position = await Geolocator.getCurrentPosition(
+              desiredAccuracy: LocationAccuracy.best,
+            );
+            TrackingService.instance
+                .addLocation(position.latitude, position.longitude);
+            setState(() {
+              isLoading = false;
+            });
+          } catch (e) {
+            print('Error getting location: $e');
+          }
+        }),
+      ),
     );
   }
 }
